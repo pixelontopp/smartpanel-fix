@@ -1,73 +1,6 @@
-name: Fix SmartPanel APKs
-
-on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Release tag name (e.g. v1)'
-        required: true
-        default: 'v1'
-
-jobs:
-  fix:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install tools
+      - name: Fix Smart.Panel.15.2.2.apk
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --fix-missing zipalign apksigner
-
-      - name: Download apktool jar
-        run: |
-          wget -q https://github.com/iBotPeaches/Apktool/releases/download/v2.9.3/apktool_2.9.3.jar -O apktool.jar
-          echo '#!/bin/bash' | sudo tee /usr/local/bin/apktool
-          echo 'java -jar /home/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}/apktool.jar "$@"' | sudo tee -a /usr/local/bin/apktool
-          sudo chmod +x /usr/local/bin/apktool
-          apktool --version
-
-      - name: Download APKs from release
-        run: |
-          gh release download "${{ github.event.inputs.tag }}" \
-            --pattern "*.apk" \
-            --dir ./apks
-          ls ./apks
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Generate debug keystore
-        run: |
-          keytool -genkey -v \
-            -keystore debug.keystore \
-            -alias debugkey \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -dname "CN=Debug,O=Debug,C=US" \
-            -storepass debugpass \
-            -keypass debugpass
-
-      - name: Fix SmartPanel.apk
-        run: |
-          apktool d "apks/SmartPanel.apk" -o decoded_1 --no-src
-          sed -i 's/android:sharedUserId="android.uid.system"//g' decoded_1/AndroidManifest.xml
-          apktool b decoded_1 -o sp1_unsigned.apk
-          zipalign -v 4 sp1_unsigned.apk sp1_aligned.apk
-          apksigner sign \
-            --ks debug.keystore \
-            --ks-key-alias debugkey \
-            --ks-pass pass:debugpass \
-            --key-pass pass:debugpass \
-            --out SmartPanel_fixed.apk \
-            sp1_aligned.apk
-
-      - name: Fix Smart_Panel_15_2_2.apk
-        run: |
-          apktool d "apks/Smart_Panel_15_2_2.apk" -o decoded_2 --no-src
+          apktool d "apks/Smart.Panel.15.2.2.apk" -o decoded_2 --no-src
           sed -i 's/android:sharedUserId="android.uid.system"//g' decoded_2/AndroidManifest.xml
           apktool b decoded_2 -o sp2_unsigned.apk
           zipalign -v 4 sp2_unsigned.apk sp2_aligned.apk
@@ -76,13 +9,5 @@ jobs:
             --ks-key-alias debugkey \
             --ks-pass pass:debugpass \
             --key-pass pass:debugpass \
-            --out Smart_Panel_15_2_2_fixed.apk \
+            --out Smart_Panel_fixed.apk \
             sp2_aligned.apk
-
-      - name: Upload both fixed APKs
-        uses: actions/upload-artifact@v4
-        with:
-          name: SmartPanel-Both-Fixed
-          path: |
-            SmartPanel_fixed.apk
-            Smart_Panel_15_2_2_fixed.apk
