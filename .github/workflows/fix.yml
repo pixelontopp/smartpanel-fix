@@ -19,7 +19,16 @@ jobs:
 
       - name: Install tools
         run: |
-          sudo apt-get install -y apktool zipalign apksigner
+          sudo apt-get update
+          sudo apt-get install -y --fix-missing zipalign apksigner
+
+      - name: Download apktool jar
+        run: |
+          wget -q https://github.com/iBotPeaches/Apktool/releases/download/v2.9.3/apktool_2.9.3.jar -O apktool.jar
+          echo '#!/bin/bash' | sudo tee /usr/local/bin/apktool
+          echo 'java -jar /home/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}/apktool.jar "$@"' | sudo tee -a /usr/local/bin/apktool
+          sudo chmod +x /usr/local/bin/apktool
+          apktool --version
 
       - name: Download APKs from release
         run: |
@@ -70,7 +79,7 @@ jobs:
             --out Smart_Panel_15_2_2_fixed.apk \
             sp2_aligned.apk
 
-      - name: Upload fixed APKs as artifact
+      - name: Upload both fixed APKs
         uses: actions/upload-artifact@v4
         with:
           name: SmartPanel-Both-Fixed
