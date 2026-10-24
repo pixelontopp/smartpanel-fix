@@ -7,7 +7,7 @@ on:
 
 jobs:
   fix:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       contents: write
 
@@ -57,34 +57,24 @@ jobs:
 
           python3 << 'PYEOF'
           import os, re
-
-          smali_dirs = []
+          smali_files = []
           for root, dirs, files in os.walk("decoded_1"):
               for f in files:
                   if f.endswith(".smali"):
-                      smali_dirs.append(os.path.join(root, f))
-
+                      smali_files.append(os.path.join(root, f))
           patched = 0
-          for path in smali_dirs:
+          for path in smali_files:
               with open(path, "r", errors="ignore") as f:
                   content = f.read()
-
-              # Wrap SecurityException-prone system service calls
-              new_content = content
-
-              # Find methods that call system services without try-catch
-              # Insert try-catch around getSystemService calls
               new_content = re.sub(
                   r'(invoke-virtual \{[^}]+\}, Landroid/content/Context;->getSystemService)',
                   r':try_start_sys\n    \1',
                   new_content
               )
-
               if new_content != content:
                   with open(path, "w") as f:
                       f.write(new_content)
                   patched += 1
-
           print(f"Patched {patched} smali files")
           PYEOF
 
@@ -105,15 +95,13 @@ jobs:
 
           python3 << 'PYEOF'
           import os, re
-
-          smali_dirs = []
+          smali_files = []
           for root, dirs, files in os.walk("decoded_2"):
               for f in files:
                   if f.endswith(".smali"):
-                      smali_dirs.append(os.path.join(root, f))
-
+                      smali_files.append(os.path.join(root, f))
           patched = 0
-          for path in smali_dirs:
+          for path in smali_files:
               with open(path, "r", errors="ignore") as f:
                   content = f.read()
               new_content = re.sub(
@@ -125,7 +113,6 @@ jobs:
                   with open(path, "w") as f:
                       f.write(new_content)
                   patched += 1
-
           print(f"Patched {patched} smali files")
           PYEOF
 
