@@ -75,12 +75,12 @@ jobs:
             --ks-key-alias debugkey \
             --ks-pass pass:debugpass \
             --key-pass pass:debugpass \
-            --out Smart_Panel_15_2_2_fixed.apk \
+            --out Smart.Panel.15.2.2.fixed.apk \
             sp2_aligned.apk
 
-      - name: Fix GameSpace_Panther_Engine_2_0.apk
+      - name: Fix GameSpace.Panther.Engine.2.0.apk
         run: |
-          apktool d "apks/GameSpace_Panther_Engine_2_0.apk" -o decoded_3 --no-src
+          apktool d "apks/GameSpace.Panther.Engine.2.0.apk" -o decoded_3 --no-src
           sed -i 's/android:sharedUserId="android.uid.system"//g' decoded_3/AndroidManifest.xml
           apktool b decoded_3 -o gs_unsigned.apk
           zipalign -v 4 gs_unsigned.apk gs_aligned.apk
@@ -89,7 +89,7 @@ jobs:
             --ks-key-alias debugkey \
             --ks-pass pass:debugpass \
             --key-pass pass:debugpass \
-            --out GameSpace_fixed.apk \
+            --out GameSpace.fixed.apk \
             gs_aligned.apk
 
       - name: Upload all fixed APKs
@@ -98,5 +98,5 @@ jobs:
           name: All-Fixed-APKs
           path: |
             SmartPanel_fixed.apk
-            Smart_Panel_15_2_2_fixed.apk
-            GameSpace_fixed.apk
+            Smart.Panel.15.2.2.fixed.apk
+            GameSpace.fixed.apk
