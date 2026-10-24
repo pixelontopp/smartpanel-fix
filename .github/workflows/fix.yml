@@ -17,7 +17,7 @@ jobs:
       - name: Install tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y --fix-missing zipalign apksigner
+          sudo apt-get install -y --fix-missing zipalign apksigner zip
 
       - name: Download apktool jar
         run: |
@@ -80,39 +80,41 @@ jobs:
 
       - name: Fix GameSpace.Panther.Engine.2.0.apk
         run: |
+          cp "apks/GameSpace.Panther.Engine.2.0.apk" GameSpace_work.apk
+
+          unzip -p GameSpace_work.apk AndroidManifest.xml > manifest_orig.bin
+
           python3 << 'PYEOF'
-          import zipfile, shutil, os
-          src = "apks/GameSpace.Panther.Engine.2.0.apk"
-          dst = "GameSpace_patched.apk"
-          shutil.copy2(src, dst)
-          with zipfile.ZipFile(dst, 'r') as z:
-              manifest = bytearray(z.read("AndroidManifest.xml"))
-          target_utf8 = b"android.uid.system"
-          target_utf16 = "android.uid.system".encode("utf-16-le")
-          replaced = False
-          for target in [target_utf8, target_utf16]:
-              idx = manifest.find(target)
+          with open("manifest_orig.bin", "rb") as f:
+              data = bytearray(f.read())
+          patched = 0
+          for target in [b"android.uid.system", "android.uid.system".encode("utf-16-le")]:
+              idx = data.find(target)
               while idx != -1:
-                  for i in range(len(target)):
-                      manifest[idx + i] = 0x00
-                  print(f"Patched at offset {idx}")
-                  replaced = True
-                  idx = manifest.find(target, idx + 1)
-          if not replaced:
-              print("sharedUserId not found")
-          else:
-              print("Patch applied")
-          tmp = dst + ".tmp"
-          with zipfile.ZipFile(dst, 'r') as zin:
-              with zipfile.ZipFile(tmp, 'w', zipfile.ZIP_DEFLATED) as zout:
+                  data[idx:idx+len(target)] = b"\x00" * len(target)
+                  patched += 1
+                  idx = data.find(target, idx+1)
+          with open("manifest_patched.bin", "wb") as f:
+              f.write(data)
+          print(f"Patched {patched} occurrences")
+          PYEOF
+
+          python3 << 'PYEOF2'
+          import zipfile, os
+          src = "GameSpace_work.apk"
+          out = "GameSpace_patched.apk"
+          with open("manifest_patched.bin", "rb") as f:
+              patched_manifest = f.read()
+          with zipfile.ZipFile(src, 'r') as zin:
+              with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as zout:
                   for item in zin.infolist():
                       if item.filename == "AndroidManifest.xml":
-                          zout.writestr(item, bytes(manifest))
+                          zout.writestr(item, patched_manifest)
                       else:
                           zout.writestr(item, zin.read(item.filename))
-          os.replace(tmp, dst)
-          print("Done")
-          PYEOF
+          print("Repack done")
+          PYEOF2
+
           zipalign -v 4 GameSpace_patched.apk GameSpace_aligned.apk
           apksigner sign \
             --ks debug.keystore \
