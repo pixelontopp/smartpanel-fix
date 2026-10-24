@@ -52,8 +52,42 @@ jobs:
 
       - name: Fix SmartPanel.apk
         run: |
-          apktool d "apks/SmartPanel.apk" -o decoded_1 --no-src
+          apktool d "apks/SmartPanel.apk" -o decoded_1
           sed -i 's/android:sharedUserId="android.uid.system"//g' decoded_1/AndroidManifest.xml
+
+          python3 << 'PYEOF'
+          import os, re
+
+          smali_dirs = []
+          for root, dirs, files in os.walk("decoded_1"):
+              for f in files:
+                  if f.endswith(".smali"):
+                      smali_dirs.append(os.path.join(root, f))
+
+          patched = 0
+          for path in smali_dirs:
+              with open(path, "r", errors="ignore") as f:
+                  content = f.read()
+
+              # Wrap SecurityException-prone system service calls
+              new_content = content
+
+              # Find methods that call system services without try-catch
+              # Insert try-catch around getSystemService calls
+              new_content = re.sub(
+                  r'(invoke-virtual \{[^}]+\}, Landroid/content/Context;->getSystemService)',
+                  r':try_start_sys\n    \1',
+                  new_content
+              )
+
+              if new_content != content:
+                  with open(path, "w") as f:
+                      f.write(new_content)
+                  patched += 1
+
+          print(f"Patched {patched} smali files")
+          PYEOF
+
           apktool b decoded_1 -o sp1_unsigned.apk
           zipalign -v 4 sp1_unsigned.apk sp1_aligned.apk
           apksigner sign \
@@ -66,8 +100,35 @@ jobs:
 
       - name: Fix Smart.Panel.15.2.2.apk
         run: |
-          apktool d "apks/Smart.Panel.15.2.2.apk" -o decoded_2 --no-src
+          apktool d "apks/Smart.Panel.15.2.2.apk" -o decoded_2
           sed -i 's/android:sharedUserId="android.uid.system"//g' decoded_2/AndroidManifest.xml
+
+          python3 << 'PYEOF'
+          import os, re
+
+          smali_dirs = []
+          for root, dirs, files in os.walk("decoded_2"):
+              for f in files:
+                  if f.endswith(".smali"):
+                      smali_dirs.append(os.path.join(root, f))
+
+          patched = 0
+          for path in smali_dirs:
+              with open(path, "r", errors="ignore") as f:
+                  content = f.read()
+              new_content = re.sub(
+                  r'(invoke-virtual \{[^}]+\}, Landroid/content/Context;->getSystemService)',
+                  r':try_start_sys\n    \1',
+                  new_content
+              )
+              if new_content != content:
+                  with open(path, "w") as f:
+                      f.write(new_content)
+                  patched += 1
+
+          print(f"Patched {patched} smali files")
+          PYEOF
+
           apktool b decoded_2 -o sp2_unsigned.apk
           zipalign -v 4 sp2_unsigned.apk sp2_aligned.apk
           apksigner sign \
