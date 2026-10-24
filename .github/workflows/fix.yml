@@ -17,7 +17,7 @@ jobs:
       - name: Install tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y --fix-missing zipalign apksigner zip
+          sudo apt-get install -y --fix-missing zipalign apksigner
 
       - name: Download apktool jar
         run: |
@@ -80,42 +80,7 @@ jobs:
 
       - name: Fix GameSpace.Panther.Engine.2.0.apk
         run: |
-          cp "apks/GameSpace.Panther.Engine.2.0.apk" GameSpace_work.apk
-
-          unzip -p GameSpace_work.apk AndroidManifest.xml > manifest_orig.bin
-
-          python3 << 'PYEOF'
-          with open("manifest_orig.bin", "rb") as f:
-              data = bytearray(f.read())
-          patched = 0
-          for target in [b"android.uid.system", "android.uid.system".encode("utf-16-le")]:
-              idx = data.find(target)
-              while idx != -1:
-                  data[idx:idx+len(target)] = b"\x00" * len(target)
-                  patched += 1
-                  idx = data.find(target, idx+1)
-          with open("manifest_patched.bin", "wb") as f:
-              f.write(data)
-          print(f"Patched {patched} occurrences")
-          PYEOF
-
-          python3 << 'PYEOF2'
-          import zipfile, os
-          src = "GameSpace_work.apk"
-          out = "GameSpace_patched.apk"
-          with open("manifest_patched.bin", "rb") as f:
-              patched_manifest = f.read()
-          with zipfile.ZipFile(src, 'r') as zin:
-              with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as zout:
-                  for item in zin.infolist():
-                      if item.filename == "AndroidManifest.xml":
-                          zout.writestr(item, patched_manifest)
-                      else:
-                          zout.writestr(item, zin.read(item.filename))
-          print("Repack done")
-          PYEOF2
-
-          zipalign -v 4 GameSpace_patched.apk GameSpace_aligned.apk
+          zipalign -v 4 "apks/GameSpace.Panther.Engine.2.0.apk" GameSpace_aligned.apk
           apksigner sign \
             --ks debug.keystore \
             --ks-key-alias debugkey \
