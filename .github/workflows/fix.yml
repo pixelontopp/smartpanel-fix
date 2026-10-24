@@ -67,9 +67,13 @@ jobs:
               with open(path, "r", errors="ignore") as f:
                   content = f.read()
               new_content = content
+              counter = [0]
+              def replacer(m):
+                  counter[0] += 1
+                  return f':try_start_sys_{counter[0]}\n    {m.group(1)}'
               new_content = re.sub(
-                  r'(invoke-virtual \{[^}]+\}, Landroid/content/Context;->getSystemService)',
-                  r':try_start_sys\n    \1',
+                  r'(invoke-virtual \{[^}]+\}, Landroid/content/Context;->getSystemService[^\n]*)',
+                  replacer,
                   new_content
               )
               if new_content != content:
@@ -106,9 +110,13 @@ jobs:
               with open(path, "r", errors="ignore") as f:
                   content = f.read()
               new_content = content
+              counter = [0]
+              def replacer(m):
+                  counter[0] += 1
+                  return f':try_start_sys_{counter[0]}\n    {m.group(1)}'
               new_content = re.sub(
-                  r'(invoke-virtual \{[^}]+\}, Landroid/content/Context;->getSystemService)',
-                  r':try_start_sys\n    \1',
+                  r'(invoke-virtual \{[^}]+\}, Landroid/content/Context;->getSystemService[^\n]*)',
+                  replacer,
                   new_content
               )
               if new_content != content:
