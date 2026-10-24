@@ -78,24 +78,17 @@ jobs:
             --out Smart.Panel.15.2.2.fixed.apk \
             sp2_aligned.apk
 
-            - name: Fix GameSpace.Panther.Engine.2.0.apk
+      - name: Fix GameSpace.Panther.Engine.2.0.apk
         run: |
-          python3 - <<'PYEOF'
-          import zipfile, shutil, os, struct
-
+          python3 << 'PYEOF'
+          import zipfile, shutil, os
           src = "apks/GameSpace.Panther.Engine.2.0.apk"
           dst = "GameSpace_patched.apk"
           shutil.copy2(src, dst)
-
-          # Read manifest from APK
           with zipfile.ZipFile(dst, 'r') as z:
               manifest = bytearray(z.read("AndroidManifest.xml"))
-
-          # Patch "android.uid.system" bytes in-place
-          # Replace with same-length null bytes to keep offsets intact
           target_utf8 = b"android.uid.system"
           target_utf16 = "android.uid.system".encode("utf-16-le")
-
           replaced = False
           for target in [target_utf8, target_utf16]:
               idx = manifest.find(target)
@@ -105,14 +98,10 @@ jobs:
                   print(f"Patched at offset {idx}")
                   replaced = True
                   idx = manifest.find(target, idx + 1)
-
           if not replaced:
-              print("sharedUserId not found — may already be clean")
+              print("sharedUserId not found")
           else:
-              print("Patch applied successfully")
-
-          # Write patched manifest back into APK
-          import tempfile
+              print("Patch applied")
           tmp = dst + ".tmp"
           with zipfile.ZipFile(dst, 'r') as zin:
               with zipfile.ZipFile(tmp, 'w', zipfile.ZIP_DEFLATED) as zout:
@@ -121,11 +110,9 @@ jobs:
                           zout.writestr(item, bytes(manifest))
                       else:
                           zout.writestr(item, zin.read(item.filename))
-
           os.replace(tmp, dst)
-          print("Done — APK patched in place")
+          print("Done")
           PYEOF
-
           zipalign -v 4 GameSpace_patched.apk GameSpace_aligned.apk
           apksigner sign \
             --ks debug.keystore \
@@ -134,6 +121,7 @@ jobs:
             --key-pass pass:debugpass \
             --out GameSpace.fixed.apk \
             GameSpace_aligned.apk
+
       - name: Upload all fixed APKs
         uses: actions/upload-artifact@v4
         with:
